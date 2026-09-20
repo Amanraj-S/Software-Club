@@ -274,7 +274,13 @@ export default function Round2Page({ studentSession, onBackHome }) {
             </p>
           </div>
 
-          <div className="mt-6 flex justify-center gap-3">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={onBackHome}
+              className="btn-cyber-secondary rounded-xl px-5 py-3 text-xs font-bold"
+            >
+              Return to Home
+            </button>
             <button
               onClick={fetchAccess}
               className="btn-cyber-primary rounded-xl px-6 py-3 text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-md"

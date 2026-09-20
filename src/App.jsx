@@ -9,8 +9,44 @@ import AdminPage from './pages/AdminPage';
 import { apiGetStudentSession } from './services/api';
 
 export default function App() {
-  const [currentStep, setCurrentStep] = useState('HOME'); // HOME, REGISTER, ROUND1, ROUND2, ADMIN
+  const [currentStep, setCurrentStepState] = useState(() => {
+    const hash = window.location.hash.replace('#', '').toUpperCase();
+    if (['HOME', 'REGISTER', 'ROUND1', 'ROUND2', 'ADMIN'].includes(hash)) {
+      return hash;
+    }
+    return 'HOME';
+  });
   const [studentSession, setStudentSession] = useState(null);
+
+  // Helper to sync view state with browser URL hash and history pushState
+  const navigateTo = (step, replace = false) => {
+    setCurrentStepState(step);
+    const hash = `#${step.toLowerCase()}`;
+    if (replace) {
+      window.history.replaceState({ step }, '', hash);
+    } else {
+      window.history.pushState({ step }, '', hash);
+    }
+  };
+
+  // Listen to browser Back / Forward buttons (popstate event)
+  useEffect(() => {
+    const handlePopState = (e) => {
+      if (e.state && e.state.step) {
+        setCurrentStepState(e.state.step);
+      } else {
+        const hash = window.location.hash.replace('#', '').toUpperCase();
+        if (['HOME', 'REGISTER', 'ROUND1', 'ROUND2', 'ADMIN'].includes(hash)) {
+          setCurrentStepState(hash);
+        } else {
+          setCurrentStepState('HOME');
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     async function restoreSession() {
@@ -20,13 +56,16 @@ export default function App() {
           const res = await apiGetStudentSession();
           if (res.student) {
             setStudentSession(res.student);
-            // Auto restore step based on backend status
-            if (res.student.round2Status === 'IN_PROGRESS' || res.student.round2Status === 'COMPLETED' || res.student.round2Access === 'GRANTED') {
-              setCurrentStep('ROUND2');
-            } else if (res.student.round1Status === 'COMPLETED') {
-              setCurrentStep('ROUND2');
-            } else if (res.student.round1Status === 'IN_PROGRESS') {
-              setCurrentStep('ROUND1');
+            // Restore step based on status if no explicit hash is present
+            const hash = window.location.hash.replace('#', '').toUpperCase();
+            if (!['ROUND1', 'ROUND2', 'ADMIN'].includes(hash)) {
+              if (res.student.round2Status === 'IN_PROGRESS' || res.student.round2Status === 'COMPLETED' || res.student.round2Access === 'GRANTED') {
+                navigateTo('ROUND2', true);
+              } else if (res.student.round1Status === 'COMPLETED') {
+                navigateTo('ROUND2', true);
+              } else if (res.student.round1Status === 'IN_PROGRESS') {
+                navigateTo('ROUND1', true);
+              }
             }
           }
         } catch (err) {
@@ -42,29 +81,29 @@ export default function App() {
     const sessionId = localStorage.getItem('dsa_student_session_id');
     if (studentSession && studentSession.name && sessionId) {
       if (studentSession.round2Status === 'IN_PROGRESS' || studentSession.round2Status === 'COMPLETED' || studentSession.round2Access === 'GRANTED' || studentSession.round1Status === 'COMPLETED') {
-        setCurrentStep('ROUND2');
+        navigateTo('ROUND2');
       } else {
-        setCurrentStep('ROUND1');
+        navigateTo('ROUND1');
       }
     } else {
-      setCurrentStep('REGISTER');
+      navigateTo('REGISTER');
     }
   };
 
   const handleRegisterComplete = (student) => {
     setStudentSession(student);
-    setCurrentStep('ROUND1');
+    navigateTo('ROUND1');
   };
 
   const handleProceedToRound2Access = () => {
-    setCurrentStep('ROUND2');
+    navigateTo('ROUND2');
   };
 
   const handleStudentLogout = () => {
     if (window.confirm('Are you sure you want to log out of candidate session?')) {
       localStorage.removeItem('dsa_student_session_id');
       setStudentSession(null);
-      setCurrentStep('HOME');
+      navigateTo('HOME');
     }
   };
 
@@ -73,7 +112,7 @@ export default function App() {
       {/* Main Top Header */}
       <Header
         studentSession={studentSession}
-        onOpenAdmin={() => setCurrentStep('ADMIN')}
+        onOpenAdmin={() => navigateTo('ADMIN')}
         onStudentLogout={handleStudentLogout}
         currentStep={currentStep}
       />
@@ -83,7 +122,7 @@ export default function App() {
         {currentStep === 'HOME' && (
           <HomePage
             onStartChallenge={handleStartChallenge}
-            onOpenAdmin={() => setCurrentStep('ADMIN')}
+            onOpenAdmin={() => navigateTo('ADMIN')}
           />
         )}
 
@@ -101,12 +140,12 @@ export default function App() {
         {currentStep === 'ROUND2' && (
           <Round2Page
             studentSession={studentSession}
-            onBackHome={() => setCurrentStep('HOME')}
+            onBackHome={() => navigateTo('HOME')}
           />
         )}
 
         {currentStep === 'ADMIN' && (
-          <AdminPage onClose={() => setCurrentStep('HOME')} />
+          <AdminPage onClose={() => navigateTo('HOME')} />
         )}
       </main>
 
