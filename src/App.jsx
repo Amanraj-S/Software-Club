@@ -20,6 +20,12 @@ export default function App() {
 
   // Helper to sync view state with browser URL hash and history pushState
   const navigateTo = (step, replace = false) => {
+    // Lock navigation if in middle of an active exam
+    if ((currentStep === 'ROUND1' || currentStep === 'ROUND2') && (step !== 'ROUND1' && step !== 'ROUND2')) {
+      console.warn('Navigation blocked during active exam mode');
+      return;
+    }
+
     setCurrentStepState(step);
     const hash = `#${step.toLowerCase()}`;
     if (replace) {
@@ -29,9 +35,15 @@ export default function App() {
     }
   };
 
-  // Listen to browser Back / Forward buttons (popstate event)
+  // Listen to browser Back / Forward buttons with Exam Security Lock
   useEffect(() => {
     const handlePopState = (e) => {
+      if (currentStep === 'ROUND1' || currentStep === 'ROUND2') {
+        // Prevent navigating away during active exam
+        window.history.pushState({ step: currentStep }, '', `#${currentStep.toLowerCase()}`);
+        return;
+      }
+
       if (e.state && e.state.step) {
         setCurrentStepState(e.state.step);
       } else {
@@ -46,7 +58,21 @@ export default function App() {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [currentStep]);
+
+  // Tab Close / Page Refresh Protection during exam
+  useEffect(() => {
+    if (currentStep !== 'ROUND1' && currentStep !== 'ROUND2') return;
+
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = 'Exam in progress! Leaving will record a security violation.';
+      return e.returnValue;
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [currentStep]);
 
   useEffect(() => {
     async function restoreSession() {
@@ -103,7 +129,8 @@ export default function App() {
     if (window.confirm('Are you sure you want to log out of candidate session?')) {
       localStorage.removeItem('dsa_student_session_id');
       setStudentSession(null);
-      navigateTo('HOME');
+      setCurrentStepState('HOME');
+      window.history.pushState({ step: 'HOME' }, '', '#home');
     }
   };
 
@@ -140,7 +167,10 @@ export default function App() {
         {currentStep === 'ROUND2' && (
           <Round2Page
             studentSession={studentSession}
-            onBackHome={() => navigateTo('HOME')}
+            onBackHome={() => {
+              setCurrentStepState('HOME');
+              window.history.pushState({ step: 'HOME' }, '', '#home');
+            }}
           />
         )}
 

@@ -257,7 +257,10 @@ export default function Round1Page({ studentSession, onProceedToRound2Access }) 
       {/* Security Toast Warning Modal */}
       <SecurityWarningToast
         isOpen={showWarningModal}
-        onClose={() => setShowWarningModal(false)}
+        onClose={() => {
+          setShowWarningModal(false);
+          requestFullscreen();
+        }}
         violationCount={violationCount}
         reason={lastViolationReason}
       />

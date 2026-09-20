@@ -527,7 +527,10 @@ export default function Round2Page({ studentSession, onBackHome }) {
       {/* Security Warning Modal */}
       <SecurityWarningToast
         isOpen={showWarningModal}
-        onClose={() => setShowWarningModal(false)}
+        onClose={() => {
+          setShowWarningModal(false);
+          requestFullscreen();
+        }}
         violationCount={violationCount}
         reason={lastViolationReason}
       />

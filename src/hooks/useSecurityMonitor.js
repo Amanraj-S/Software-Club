@@ -84,12 +84,21 @@ export function useSecurityMonitor({
       }
     };
 
+    // Auto re-enter fullscreen on user click if currently exited
+    const handleUserClick = () => {
+      const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      if (!isFull) {
+        requestFullscreen();
+      }
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleWindowBlur);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
     document.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('click', handleUserClick);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -98,6 +107,7 @@ export function useSecurityMonitor({
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('click', handleUserClick);
     };
   }, [isEnabled, registerViolation]);
 
