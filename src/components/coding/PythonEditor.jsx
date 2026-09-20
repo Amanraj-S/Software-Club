@@ -1,6 +1,13 @@
-import React from 'react';
-import Editor from '@monaco-editor/react';
-import { RotateCcw, Play, Send, Code2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import Editor, { loader } from '@monaco-editor/react';
+import { RotateCcw, Play, Send, Code2, Loader2 } from 'lucide-react';
+
+// Configure CDN for Monaco Editor
+loader.config({
+  paths: {
+    vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs'
+  }
+});
 
 export default function PythonEditor({
   code,
@@ -11,8 +18,19 @@ export default function PythonEditor({
   isRunning = false,
   isSubmitting = false
 }) {
+  const [useFallback, setUseFallback] = useState(false);
+
+  useEffect(() => {
+    // If Monaco CDN does not load within 6 seconds, gracefully switch to fallback textarea editor
+    const timer = setTimeout(() => {
+      if (!window.monaco) {
+        console.warn('Monaco CDN load timed out. Switching to fallback Python editor.');
+      }
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleEditorWillMount = (monaco) => {
-    // Define custom dark cyber theme for Monaco
     monaco.editor.defineTheme('cyber-dark', {
       base: 'vs-dark',
       inherit: true,
@@ -79,27 +97,43 @@ export default function PythonEditor({
       </div>
 
       {/* Monaco Code Editor */}
-      <div className="flex-1 min-h-[300px]">
-        <Editor
-          height="100%"
-          defaultLanguage="python"
-          theme="cyber-dark"
-          value={code}
-          onChange={onChangeCode}
-          beforeMount={handleEditorWillMount}
-          options={{
-            fontSize: 14,
-            fontFamily: "'Fira Code', 'Courier New', monospace",
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            automaticLayout: true,
-            lineNumbers: 'on',
-            renderLineHighlight: 'all',
-            tabSize: 4,
-            insertSpaces: true,
-            padding: { top: 12, bottom: 12 }
-          }}
-        />
+      <div className="flex-1 min-h-[300px] relative">
+        {!useFallback ? (
+          <Editor
+            height="100%"
+            defaultLanguage="python"
+            theme="cyber-dark"
+            value={code}
+            onChange={(val) => onChangeCode(val || '')}
+            beforeMount={handleEditorWillMount}
+            loading={
+              <div className="h-full flex flex-col items-center justify-center bg-[#060913] text-amber-400 space-y-2 p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+                <span className="text-xs font-mono font-bold">Loading Python IDE Editor...</span>
+              </div>
+            }
+            options={{
+              fontSize: 14,
+              fontFamily: "'Fira Code', 'Courier New', monospace",
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              lineNumbers: 'on',
+              renderLineHighlight: 'all',
+              tabSize: 4,
+              insertSpaces: true,
+              padding: { top: 12, bottom: 12 }
+            }}
+          />
+        ) : (
+          <textarea
+            value={code}
+            onChange={(e) => onChangeCode(e.target.value)}
+            className="w-full h-full p-4 bg-[#060913] text-emerald-400 font-mono text-sm border-none focus:outline-none resize-none leading-relaxed"
+            placeholder="Write your Python code here..."
+            spellCheck={false}
+          />
+        )}
       </div>
     </div>
   );

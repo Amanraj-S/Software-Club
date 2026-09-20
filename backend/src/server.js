@@ -27,7 +27,10 @@ const PORT = process.env.PORT || 5000;
 connectDB();
 
 // Security Middlewares
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
 app.use(cors({
   origin: '*', // Allow connections from Vite frontend
   credentials: true
