@@ -9,10 +9,10 @@ services:
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
-        sync: false
+        value: mongodb+srv://amanrajsathishkumar05_db_user:Amanraj_2005@dsa-competition.qsecs3c.mongodb.net/?appName=DSA-Competition
       - key: JWT_SECRET
-        generateValue: true
+        value: super_secret_dsa_competition_key_2026_sathyabama
       - key: ADMIN_USERNAME
         value: admin
       - key: ADMIN_PASSWORD
-        sync: false
+        value: adminpassword123
