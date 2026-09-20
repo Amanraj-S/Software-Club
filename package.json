@@ -8,26 +8,26 @@
     "build": "vite build",
     "postinstall": "cd backend && npm install",
     "start": "cd backend && node src/server.js",
-    "render-build": "npm install && cd backend && npm install && cd .. && npm run build",
+    "render-build": "npm install --include=dev && cd backend && npm install && cd .. && npm run build",
     "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
     "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^6.1.1",
     "canvas-confetti": "^1.9.4",
     "framer-motion": "^13.4.0",
     "lucide-react": "^1.47.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tailwindcss": "^4.3.3",
-    "three": "^0.186.0"
+    "three": "^0.186.0",
+    "vite": "^8.3.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
-    "@vitejs/plugin-react": "^6.1.1",
-    "oxlint": "^1.81.0",
-    "vite": "^8.3.0"
+    "oxlint": "^1.81.0"
   }
 }
