@@ -1,8 +1,26 @@
-import React, { useState } from 'react';
-import { Terminal, Calendar, Clock, MapPin, Award, CheckCircle2, ArrowRight, Shield, BookOpen, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Terminal, Calendar, Clock, MapPin, Award, CheckCircle2, ArrowRight, Shield, BookOpen, Sparkles, Lock, CheckCircle } from 'lucide-react';
+import { apiGetPublicConfig } from '../services/api';
 
 export default function HomePage({ onStartChallenge, onOpenAdmin }) {
   const [showInstructionsModal, setShowInstructionsModal] = useState(false);
+  const [round1Enabled, setRound1Enabled] = useState(true);
+
+  useEffect(() => {
+    async function checkConfig() {
+      try {
+        const res = await apiGetPublicConfig();
+        setRound1Enabled(!!res.round1Enabled);
+      } catch (e) {
+        console.error('Failed to fetch public config:', e);
+      }
+    }
+    checkConfig();
+  }, []);
+
+  const handleStart = () => {
+    onStartChallenge();
+  };
 
   return (
     <div className="relative min-h-[calc(100vh-80px)] px-4 py-8 sm:px-6 lg:px-8 max-w-7xl mx-auto flex flex-col justify-between">
@@ -43,10 +61,31 @@ export default function HomePage({ onStartChallenge, onOpenAdmin }) {
           </div>
         </div>
 
+        {/* Round 1 Status Pill */}
+        <div className="mt-6 flex justify-center">
+          <span className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-mono font-bold shadow-sm border ${
+            round1Enabled
+              ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+              : 'bg-amber-100 text-amber-900 border-amber-300'
+          }`}>
+            {round1Enabled ? (
+              <>
+                <CheckCircle className="h-4 w-4 text-emerald-600" />
+                <span>ROUND 1 IS OPEN & ACTIVE</span>
+              </>
+            ) : (
+              <>
+                <Lock className="h-4 w-4 text-amber-600" />
+                <span>ROUND 1 IS CURRENTLY LOCKED BY ADMIN</span>
+              </>
+            )}
+          </span>
+        </div>
+
         {/* Main CTA */}
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
           <button
-            onClick={onStartChallenge}
+            onClick={handleStart}
             className="btn-cyber-primary rounded-2xl px-8 py-4 text-sm font-black tracking-wider uppercase flex items-center gap-3 shadow-xl"
           >
             <span>[ START / LOGIN CHALLENGE ]</span>
@@ -107,7 +146,7 @@ export default function HomePage({ onStartChallenge, onOpenAdmin }) {
                 <span className="rounded-xl bg-amber-500/10 border border-amber-400/40 px-3 py-1 font-mono text-xs font-black text-amber-800">
                   ROUND 1
                 </span>
-                <span className="text-xs font-mono font-bold text-slate-500">40 MINUTES</span>
+                <span className="text-xs font-mono font-bold text-slate-500">35 MINUTES</span>
               </div>
               <h3 className="mt-4 text-xl font-black text-slate-900">DSA Fundamentals</h3>
               <p className="mt-2 text-xs text-slate-600 leading-relaxed font-medium">
@@ -121,7 +160,7 @@ export default function HomePage({ onStartChallenge, onOpenAdmin }) {
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-amber-600" />
-                  <span>40 Minutes Duration</span>
+                  <span>35 Minutes Duration</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-amber-600" />
@@ -138,7 +177,7 @@ export default function HomePage({ onStartChallenge, onOpenAdmin }) {
                 <span className="rounded-xl bg-amber-500/10 border border-amber-400/40 px-3 py-1 font-mono text-xs font-black text-amber-800">
                   ROUND 2
                 </span>
-                <span className="text-xs font-mono font-bold text-slate-500">90 MINUTES</span>
+                <span className="text-xs font-mono font-bold text-slate-500">60 MINUTES (1 HOUR)</span>
               </div>
               <h3 className="mt-4 text-xl font-black text-slate-900">Python Coding Challenge</h3>
               <p className="mt-2 text-xs text-slate-600 leading-relaxed font-medium">
@@ -152,7 +191,7 @@ export default function HomePage({ onStartChallenge, onOpenAdmin }) {
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-amber-600" />
-                  <span>1 Hour 30 Minutes Duration</span>
+                  <span>1 Hour (60 Minutes) Duration</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-amber-600" />
@@ -180,7 +219,7 @@ export default function HomePage({ onStartChallenge, onOpenAdmin }) {
               </p>
               <p className="flex items-start gap-2">
                 <span className="font-mono text-amber-600 font-bold">2.</span>
-                <span>Round 1 contains 30 questions with a duration of 40 minutes. Answers are saved automatically.</span>
+                <span>Round 1 contains 30 questions with a duration of 35 minutes. Answers are saved automatically.</span>
               </p>
               <p className="flex items-start gap-2">
                 <span className="font-mono text-amber-600 font-bold">3.</span>
@@ -188,7 +227,7 @@ export default function HomePage({ onStartChallenge, onOpenAdmin }) {
               </p>
               <p className="flex items-start gap-2">
                 <span className="font-mono text-amber-600 font-bold">4.</span>
-                <span>Round 2 duration is 1 Hour 30 Minutes (90 minutes) consisting of 5 Python programming challenges.</span>
+                <span>Round 2 duration is 1 Hour (60 minutes) consisting of 5 Python programming challenges.</span>
               </p>
               <p className="flex items-start gap-2">
                 <span className="font-mono text-amber-600 font-bold">5.</span>
@@ -196,7 +235,7 @@ export default function HomePage({ onStartChallenge, onOpenAdmin }) {
               </p>
               <p className="flex items-start gap-2">
                 <span className="font-mono text-amber-600 font-bold">6.</span>
-                <span>Exam Security is active: Tab switching, document hiding, or window blur will trigger security violations.</span>
+                <span>Exam Security is active: Tab switching, document hiding, or window blur will trigger security violations (Max 5 violations allowed).</span>
               </p>
             </div>
 

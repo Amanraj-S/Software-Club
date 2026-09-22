@@ -14,7 +14,7 @@ export const getRound2Access = async (req, res) => {
       accessState: student.round2Access, // 'LOCKED', 'GRANTED', 'REVOKED'
       statusState: student.round2Status, // 'NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'
       round2StartedAt: student.round2StartedAt,
-      durationMinutes: 90
+      durationMinutes: 60
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Error checking Round 2 access.' });
@@ -24,14 +24,6 @@ export const getRound2Access = async (req, res) => {
 export const startRound2 = async (req, res) => {
   try {
     const student = req.student;
-
-    // Strict backend security validations
-    if (student.round1Status !== 'COMPLETED') {
-      return res.status(403).json({
-        success: false,
-        message: 'You must complete Round 1 first.'
-      });
-    }
 
     if (student.round2Access !== 'GRANTED') {
       return res.status(403).json({
@@ -57,7 +49,7 @@ export const startRound2 = async (req, res) => {
       success: true,
       message: 'Round 2 coding challenge started.',
       round2StartedAt: student.round2StartedAt,
-      durationMinutes: 90
+      durationMinutes: 60
     });
 
   } catch (error) {

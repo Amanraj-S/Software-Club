@@ -45,7 +45,7 @@ export default function Round2Page({ studentSession, onBackHome }) {
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
-  const [initialTimeRemaining, setInitialTimeRemaining] = useState(5400);
+  const [initialTimeRemaining, setInitialTimeRemaining] = useState(3600); // 60 minutes (1 Hour) default
 
   // Check Round 2 Access on Mount & Refresh
   const fetchAccess = async () => {
@@ -60,7 +60,7 @@ export default function Round2Page({ studentSession, onBackHome }) {
       if (res.round2StartedAt) {
         const startedMs = new Date(res.round2StartedAt).getTime();
         const elapsedSec = Math.floor((Date.now() - startedMs) / 1000);
-        const remainingSec = Math.max(0, (res.durationMinutes || 90) * 60 - elapsedSec);
+        const remainingSec = Math.max(0, (res.durationMinutes || 60) * 60 - elapsedSec);
         setInitialTimeRemaining(remainingSec);
       }
 
@@ -110,10 +110,10 @@ export default function Round2Page({ studentSession, onBackHome }) {
     fetchAccess();
   }, []);
 
-  // Timer Hook (90 minutes)
+  // Timer Hook (60 minutes / 1 Hour)
   const { secondsLeft, formattedTime, warningState } = useExamTimer(
     initialTimeRemaining,
-    () => handleAutoSubmitFinal('90-minute Timer Expired'),
+    () => handleAutoSubmitFinal('60-minute Timer Expired'),
     statusState === 'IN_PROGRESS' && accessState === 'GRANTED'
   );
 
@@ -127,7 +127,8 @@ export default function Round2Page({ studentSession, onBackHome }) {
     isFullscreen
   } = useSecurityMonitor({
     isEnabled: statusState === 'IN_PROGRESS' && accessState === 'GRANTED',
-    maxViolations: 3,
+    isPaused: showConfirmSubmit, // Pause security monitor while submit confirmation modal is active
+    maxViolations: 5,
     onMaxViolationsExceeded: (count, reason) => handleAutoSubmitFinal(`Max security violations reached (${reason})`),
     onViolationOccurred: async (count, reason) => {
       try {
@@ -139,10 +140,10 @@ export default function Round2Page({ studentSession, onBackHome }) {
   });
 
   useEffect(() => {
-    if (statusState === 'IN_PROGRESS' && accessState === 'GRANTED') {
+    if (statusState === 'IN_PROGRESS' && accessState === 'GRANTED' && !showConfirmSubmit) {
       requestFullscreen();
     }
-  }, [statusState, accessState]);
+  }, [statusState, accessState, showConfirmSubmit]);
 
   // Handle Start Round 2
   const handleStartExam = async () => {
@@ -231,6 +232,10 @@ export default function Round2Page({ studentSession, onBackHome }) {
   const handleAutoSubmitFinal = async (reason = '') => {
     try {
       setIsSubmitting(true);
+      // Auto-save active problem code draft before submitting
+      if (currentProblem && codeSubmissions[currentProblem.id]) {
+        await apiSaveDraftCode(currentProblem.id, codeSubmissions[currentProblem.id]).catch(() => {});
+      }
       await apiSubmitRound2();
       setStatusState('COMPLETED');
     } catch (err) {
@@ -348,7 +353,7 @@ export default function Round2Page({ studentSession, onBackHome }) {
               The event administrator has granted you access to Round 2!
             </p>
             <ul className="space-y-1 list-disc list-inside text-slate-600 font-mono font-medium">
-              <li>Duration: 90 Minutes (1 Hour 30 Mins)</li>
+              <li>Duration: 60 Minutes (1 Hour)</li>
               <li>Challenges: 5 Algorithmic Python Problems</li>
               <li>Environment: Monaco IDE with sandboxed execution</li>
               <li>Security monitoring active during coding</li>
@@ -361,7 +366,13 @@ export default function Round2Page({ studentSession, onBackHome }) {
             </div>
           )}
 
-          <div className="mt-6 flex justify-center">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={onBackHome}
+              className="btn-cyber-secondary rounded-2xl px-6 py-4 text-xs font-bold"
+            >
+              Return to Home
+            </button>
             <button
               onClick={handleStartExam}
               className="btn-cyber-primary rounded-2xl px-8 py-4 text-sm font-black uppercase tracking-wider flex items-center gap-3 shadow-xl"
@@ -532,6 +543,7 @@ export default function Round2Page({ studentSession, onBackHome }) {
           requestFullscreen();
         }}
         violationCount={violationCount}
+        maxViolations={5}
         reason={lastViolationReason}
       />
     </div>

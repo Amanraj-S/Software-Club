@@ -3,7 +3,10 @@ import { Student } from '../models/Student.js';
 import { Round1Submission } from '../models/Round1Submission.js';
 import { CodingSubmission } from '../models/CodingSubmission.js';
 import { ViolationLog } from '../models/ViolationLog.js';
+import { EventConfig } from '../models/EventConfig.js';
 import bcrypt from 'bcryptjs';
+
+let inMemoryRound1Enabled = false;
 import jwt from 'jsonwebtoken';
 
 // Helper to issue JWT
@@ -287,3 +290,58 @@ export const exportResultsCSV = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Error generating CSV export.' });
   }
 };
+
+export const checkRound1EnabledStatus = async () => {
+  try {
+    const config = await EventConfig.findOne({ key: 'global_config' });
+    if (config) return config.round1Enabled;
+    return inMemoryRound1Enabled;
+  } catch (err) {
+    return inMemoryRound1Enabled;
+  }
+};
+
+export const getPublicConfig = async (req, res) => {
+  try {
+    const round1Enabled = await checkRound1EnabledStatus();
+    return res.status(200).json({
+      success: true,
+      round1Enabled
+    });
+  } catch (error) {
+    return res.status(200).json({
+      success: true,
+      round1Enabled: inMemoryRound1Enabled
+    });
+  }
+};
+
+export const toggleRound1Config = async (req, res) => {
+  try {
+    const { round1Enabled } = req.body;
+    const targetState = Boolean(round1Enabled);
+    inMemoryRound1Enabled = targetState;
+
+    let config = await EventConfig.findOne({ key: 'global_config' });
+    if (!config) {
+      config = new EventConfig({ key: 'global_config', round1Enabled: targetState });
+    } else {
+      config.round1Enabled = targetState;
+    }
+    await config.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Round 1 has been ${targetState ? 'ENABLED' : 'DISABLED'} by Administrator.`,
+      round1Enabled: config.round1Enabled
+    });
+  } catch (error) {
+    console.error('Toggle Round 1 Error:', error);
+    return res.status(200).json({
+      success: true,
+      message: `Round 1 has been ${inMemoryRound1Enabled ? 'ENABLED' : 'DISABLED'} (in-memory).`,
+      round1Enabled: inMemoryRound1Enabled
+    });
+  }
+};
+

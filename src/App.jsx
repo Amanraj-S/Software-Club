@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Header from './components/common/Header';
 import Footer from './components/common/Footer';
 import HomePage from './pages/HomePage';
@@ -9,56 +9,89 @@ import AdminPage from './pages/AdminPage';
 import { apiGetStudentSession } from './services/api';
 
 export default function App() {
+  const [studentSession, setStudentSession] = useState(null);
+
+  // Validate navigation access to prevent direct URL manipulation security bypasses
+  const validateRouteAccess = useCallback((targetStep, session = studentSession) => {
+    const rawStep = (targetStep || '').toUpperCase();
+    if (!['HOME', 'REGISTER', 'ROUND1', 'ROUND2', 'ADMIN'].includes(rawStep)) {
+      return 'HOME';
+    }
+
+    const sessionId = localStorage.getItem('dsa_student_session_id');
+
+    // Security Guard 1: Direct /round1 navigation check
+    if (rawStep === 'ROUND1') {
+      if (!sessionId) {
+        console.warn('Security Guard: Unauthenticated access attempt to Round 1 blocked.');
+        return 'REGISTER';
+      }
+    }
+
+    // Security Guard 2: Direct /round2 navigation check
+    if (rawStep === 'ROUND2') {
+      if (!sessionId) {
+        console.warn('Security Guard: Unauthenticated access attempt to Round 2 blocked.');
+        return 'REGISTER';
+      }
+    }
+
+    return rawStep;
+  }, [studentSession]);
+
   const [currentStep, setCurrentStepState] = useState(() => {
     const hash = window.location.hash.replace('#', '').toUpperCase();
-    if (['HOME', 'REGISTER', 'ROUND1', 'ROUND2', 'ADMIN'].includes(hash)) {
-      return hash;
-    }
-    return 'HOME';
+    return validateRouteAccess(hash);
   });
-  const [studentSession, setStudentSession] = useState(null);
 
   // Helper to sync view state with browser URL hash and history pushState
   const navigateTo = (step, replace = false) => {
     // Lock navigation if in middle of an active exam
     if ((currentStep === 'ROUND1' || currentStep === 'ROUND2') && (step !== 'ROUND1' && step !== 'ROUND2')) {
-      console.warn('Navigation blocked during active exam mode');
+      console.warn('Security Lock: Navigation blocked during active exam mode');
+      window.history.pushState({ step: currentStep }, '', `#${currentStep.toLowerCase()}`);
       return;
     }
 
-    setCurrentStepState(step);
-    const hash = `#${step.toLowerCase()}`;
+    const validStep = validateRouteAccess(step);
+    setCurrentStepState(validStep);
+    const hash = `#${validStep.toLowerCase()}`;
     if (replace) {
-      window.history.replaceState({ step }, '', hash);
+      window.history.replaceState({ step: validStep }, '', hash);
     } else {
-      window.history.pushState({ step }, '', hash);
+      window.history.pushState({ step: validStep }, '', hash);
     }
   };
 
-  // Listen to browser Back / Forward buttons with Exam Security Lock
+  // Listen to browser Back / Forward & direct URL address bar Hash changes
   useEffect(() => {
-    const handlePopState = (e) => {
+    const handleUrlChange = () => {
+      // Security Lock: Prevent navigating away during active exam
       if (currentStep === 'ROUND1' || currentStep === 'ROUND2') {
-        // Prevent navigating away during active exam
-        window.history.pushState({ step: currentStep }, '', `#${currentStep.toLowerCase()}`);
-        return;
-      }
-
-      if (e.state && e.state.step) {
-        setCurrentStepState(e.state.step);
-      } else {
-        const hash = window.location.hash.replace('#', '').toUpperCase();
-        if (['HOME', 'REGISTER', 'ROUND1', 'ROUND2', 'ADMIN'].includes(hash)) {
-          setCurrentStepState(hash);
-        } else {
-          setCurrentStepState('HOME');
+        const targetHash = window.location.hash.replace('#', '').toUpperCase();
+        if (targetHash !== currentStep) {
+          window.history.pushState({ step: currentStep }, '', `#${currentStep.toLowerCase()}`);
+          return;
         }
       }
+
+      const hash = window.location.hash.replace('#', '').toUpperCase();
+      const validStep = validateRouteAccess(hash);
+
+      if (validStep !== hash) {
+        window.history.replaceState({ step: validStep }, '', `#${validStep.toLowerCase()}`);
+      }
+      setCurrentStepState(validStep);
     };
 
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [currentStep]);
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('hashchange', handleUrlChange);
+
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('hashchange', handleUrlChange);
+    };
+  }, [currentStep, validateRouteAccess]);
 
   // Tab Close / Page Refresh Protection during exam
   useEffect(() => {
@@ -74,6 +107,7 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [currentStep]);
 
+  // Session Restore on App Load - ONLY auto-redirect if an exam is actively IN_PROGRESS
   useEffect(() => {
     async function restoreSession() {
       const sessionId = localStorage.getItem('dsa_student_session_id');
@@ -82,12 +116,10 @@ export default function App() {
           const res = await apiGetStudentSession();
           if (res.student) {
             setStudentSession(res.student);
-            // Restore step based on status if no explicit hash is present
+
             const hash = window.location.hash.replace('#', '').toUpperCase();
             if (!['ROUND1', 'ROUND2', 'ADMIN'].includes(hash)) {
-              if (res.student.round2Status === 'IN_PROGRESS' || res.student.round2Status === 'COMPLETED' || res.student.round2Access === 'GRANTED') {
-                navigateTo('ROUND2', true);
-              } else if (res.student.round1Status === 'COMPLETED') {
+              if (res.student.round2Status === 'IN_PROGRESS') {
                 navigateTo('ROUND2', true);
               } else if (res.student.round1Status === 'IN_PROGRESS') {
                 navigateTo('ROUND1', true);
@@ -106,7 +138,12 @@ export default function App() {
   const handleStartChallenge = () => {
     const sessionId = localStorage.getItem('dsa_student_session_id');
     if (studentSession && studentSession.name && sessionId) {
-      if (studentSession.round2Status === 'IN_PROGRESS' || studentSession.round2Status === 'COMPLETED' || studentSession.round2Access === 'GRANTED' || studentSession.round1Status === 'COMPLETED') {
+      if (
+        studentSession.round2Status === 'IN_PROGRESS' ||
+        studentSession.round2Status === 'COMPLETED' ||
+        studentSession.round2Access === 'GRANTED' ||
+        studentSession.round1Status === 'COMPLETED'
+      ) {
         navigateTo('ROUND2');
       } else {
         navigateTo('ROUND1');

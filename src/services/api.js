@@ -42,6 +42,10 @@ async function fetchAPI(endpoint, options = {}) {
   return data;
 }
 
+// System Config APIs
+export const apiGetPublicConfig = () => fetchAPI('/exam/config');
+export const apiToggleRound1 = (round1Enabled) => fetchAPI('/admin/config/round1', { method: 'POST', body: JSON.stringify({ round1Enabled }) });
+
 // Student APIs
 export const apiRegisterStudent = (data) => fetchAPI('/students/register', { method: 'POST', body: JSON.stringify(data) });
 export const apiLoginStudent = (registerNumber) => fetchAPI('/students/login', { method: 'POST', body: JSON.stringify({ registerNumber }) });

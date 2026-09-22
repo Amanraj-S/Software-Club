@@ -92,31 +92,29 @@ If no second distinct largest element exists (e.g. all elements are equal or len
   {
     id: 4,
     title: "Palindrome String Verification",
-    difficulty: "Medium",
+    difficulty: "Easy",
     points: 20,
-    shortDesc: "Determine whether a given string is a palindrome considering alphanumeric characters only.",
-    description: `A phrase is a **palindrome** if, after converting all uppercase letters into lowercase letters and removing all non-alphanumeric characters, it reads the same forward and backward.
-
-Write a Python function \`is_palindrome(s)\` that returns \`True\` if the string is a palindrome, and \`False\` otherwise.`,
+    shortDesc: "Check if a given string reads the same forward and backward.",
+    description: `Write a Python function \`is_palindrome(s)\` that accepts a string \`s\` and returns \`True\` if string \`s\` is a palindrome (reads the same forward and backward), and \`False\` otherwise.`,
     inputFormat: "A single string `s`.",
     outputFormat: "Return True or False (boolean).",
     constraints: [
-      "1 <= len(s) <= 2 * 10^5"
+      "1 <= len(s) <= 1000"
     ],
     starterCode: `def is_palindrome(s):
     # Write your Python solution here
     pass
 `,
-    sampleInput: "\"A man, a plan, a canal: Panama\"",
+    sampleInput: "\"mom\"",
     sampleOutput: "True",
     publicTestCases: [
-      { id: 1, input: "\"A man, a plan, a canal: Panama\"", expected: "True" },
-      { id: 2, input: "\"race a car\"", expected: "False" },
-      { id: 3, input: "\" \"", expected: "True" }
+      { id: 1, input: "\"mom\"", expected: "True" },
+      { id: 2, input: "\"gnd\"", expected: "False" },
+      { id: 3, input: "\"racecar\"", expected: "True" }
     ],
     hiddenTestCases: [
-      { id: 4, input: "\"No 'x' in Nixon\"", expected: "True" },
-      { id: 5, input: "\"ab_a\"", expected: "True" }
+      { id: 4, input: "\"noon\"", expected: "True" },
+      { id: 5, input: "\"python\"", expected: "False" }
     ]
   },
   {

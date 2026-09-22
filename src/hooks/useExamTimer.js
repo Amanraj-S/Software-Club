@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 export function useExamTimer(initialSeconds, onTimeExpired, isActive = true) {
   const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
   const onTimeExpiredRef = useRef(onTimeExpired);
+  const hasExpiredRef = useRef(false);
 
   useEffect(() => {
     onTimeExpiredRef.current = onTimeExpired;
@@ -12,6 +13,17 @@ export function useExamTimer(initialSeconds, onTimeExpired, isActive = true) {
     setSecondsLeft(initialSeconds);
   }, [initialSeconds]);
 
+  // Handle immediate expiration if initialSeconds <= 0 on mount/restore
+  useEffect(() => {
+    if (isActive && initialSeconds <= 0 && !hasExpiredRef.current) {
+      hasExpiredRef.current = true;
+      if (onTimeExpiredRef.current) {
+        onTimeExpiredRef.current();
+      }
+    }
+  }, [isActive, initialSeconds]);
+
+  // Countdown timer loop
   useEffect(() => {
     if (!isActive || secondsLeft <= 0) return;
 
@@ -19,8 +31,11 @@ export function useExamTimer(initialSeconds, onTimeExpired, isActive = true) {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          if (onTimeExpiredRef.current) {
-            onTimeExpiredRef.current();
+          if (!hasExpiredRef.current) {
+            hasExpiredRef.current = true;
+            if (onTimeExpiredRef.current) {
+              onTimeExpiredRef.current();
+            }
           }
           return 0;
         }
@@ -33,9 +48,10 @@ export function useExamTimer(initialSeconds, onTimeExpired, isActive = true) {
 
   // Format time as HH:MM:SS or MM:SS
   const formatTime = () => {
-    const hours = Math.floor(secondsLeft / 3600);
-    const mins = Math.floor((secondsLeft % 3600) / 60);
-    const secs = secondsLeft % 60;
+    const safeSecs = Math.max(0, secondsLeft);
+    const hours = Math.floor(safeSecs / 3600);
+    const mins = Math.floor((safeSecs % 3600) / 60);
+    const secs = safeSecs % 60;
 
     const pad = (n) => String(n).padStart(2, '0');
 

@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 
 export function useSecurityMonitor({
   isEnabled = false,
-  maxViolations = 3,
+  isPaused = false,
+  maxViolations = 5,
   onMaxViolationsExceeded = () => {},
   onViolationOccurred = () => {}
 }) {
@@ -12,7 +13,7 @@ export function useSecurityMonitor({
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const registerViolation = useCallback((reason) => {
-    if (!isEnabled) return;
+    if (!isEnabled || isPaused) return;
     
     setViolationCount((prev) => {
       const nextCount = prev + 1;
@@ -25,43 +26,55 @@ export function useSecurityMonitor({
       }
       return nextCount;
     });
-  }, [isEnabled, maxViolations, onMaxViolationsExceeded, onViolationOccurred]);
+  }, [isEnabled, isPaused, maxViolations, onMaxViolationsExceeded, onViolationOccurred]);
 
   // Request Fullscreen
   const requestFullscreen = async () => {
     try {
       const elem = document.documentElement;
-      if (elem.requestFullscreen) {
-        await elem.requestFullscreen();
-      } else if (elem.webkitRequestFullscreen) {
-        await elem.webkitRequestFullscreen();
+      const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      if (!isFull) {
+        if (elem.requestFullscreen) {
+          await elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+          await elem.webkitRequestFullscreen();
+        }
       }
       setIsFullscreen(true);
     } catch (err) {
-      console.warn('Fullscreen request bypassed by browser permissions:', err);
+      console.warn('Fullscreen request bypassed or requires user interaction:', err);
     }
   };
 
   useEffect(() => {
-    if (!isEnabled) return;
+    if (!isEnabled || isPaused) return;
 
     // Visibility change (tab switch / window minimize)
     const handleVisibilityChange = () => {
       if (document.hidden) {
         registerViolation('Tab Switch / Window Minimized detected');
+      } else {
+        // Automatically attempt to re-enter fullscreen when returning to tab
+        requestFullscreen();
       }
     };
 
     // Window blur
     const handleWindowBlur = () => {
+      if (isPaused) return;
       registerViolation('Window focus lost (Switched window/app)');
+    };
+
+    // Window focus - auto re-enter fullscreen
+    const handleWindowFocus = () => {
+      requestFullscreen();
     };
 
     // Fullscreen change
     const handleFullscreenChange = () => {
       const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
       setIsFullscreen(isFull);
-      if (!isFull) {
+      if (!isFull && !isPaused) {
         registerViolation('Exited Fullscreen exam mode');
       }
     };
@@ -84,7 +97,7 @@ export function useSecurityMonitor({
       }
     };
 
-    // Auto re-enter fullscreen on user click if currently exited
+    // Auto re-enter fullscreen on any user click if currently exited
     const handleUserClick = () => {
       const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
       if (!isFull) {
@@ -94,6 +107,7 @@ export function useSecurityMonitor({
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('focus', handleWindowFocus);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
     document.addEventListener('contextmenu', handleContextMenu);
@@ -103,13 +117,14 @@ export function useSecurityMonitor({
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('focus', handleWindowFocus);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('click', handleUserClick);
     };
-  }, [isEnabled, registerViolation]);
+  }, [isEnabled, isPaused, registerViolation]);
 
   return {
     violationCount,

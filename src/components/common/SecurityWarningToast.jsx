@@ -6,7 +6,7 @@ export default function SecurityWarningToast({
   isOpen,
   onClose,
   violationCount,
-  maxViolations = 3,
+  maxViolations = 5,
   reason
 }) {
   if (!isOpen) return null;

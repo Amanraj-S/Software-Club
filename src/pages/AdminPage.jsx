@@ -7,8 +7,11 @@ import {
   apiRevokeRound2Access,
   apiGrantSelectedRound2Access,
   apiExportResultsCSV,
-  apiGetStudentDetail
+  apiGetStudentDetail,
+  apiGetPublicConfig,
+  apiToggleRound1
 } from '../services/api';
+import { ToggleLeft, ToggleRight, PlayCircle, StopCircle } from 'lucide-react';
 import {
   Shield,
   Search,
@@ -56,6 +59,34 @@ export default function AdminPage({ onClose }) {
   const [inspectLoading, setInspectLoading] = useState(false);
 
   const [actionMessage, setActionMessage] = useState(null);
+  const [round1Enabled, setRound1Enabled] = useState(false);
+  const [togglingR1, setTogglingR1] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      apiGetPublicConfig()
+        .then((res) => setRound1Enabled(!!res.round1Enabled))
+        .catch((err) => console.error(err));
+    }
+  }, [isAuthenticated]);
+
+  const handleToggleRound1 = async () => {
+    const nextState = !round1Enabled;
+    const actionStr = nextState ? 'ENABLE' : 'DISABLE';
+    if (window.confirm(`Are you sure you want to ${actionStr} Round 1 for all candidates?`)) {
+      setTogglingR1(true);
+      try {
+        const res = await apiToggleRound1(nextState);
+        setRound1Enabled(!!res.round1Enabled);
+        setActionMessage(res.message);
+        setTimeout(() => setActionMessage(null), 4000);
+      } catch (err) {
+        alert(err.message || 'Failed to update Round 1 status.');
+      } finally {
+        setTogglingR1(false);
+      }
+    }
+  };
 
   // Load Dashboard Data
   const loadDashboard = async () => {
@@ -336,6 +367,64 @@ export default function AdminPage({ onClose }) {
             <span>Logout</span>
           </button>
         </div>
+      </div>
+
+      {/* Round 1 Master Control Banner */}
+      <div className={`glass-panel rounded-2xl p-4 border flex flex-wrap items-center justify-between gap-4 transition-all shadow-sm ${
+        round1Enabled
+          ? 'bg-emerald-500/10 border-emerald-300'
+          : 'bg-amber-500/10 border-amber-300'
+      }`}>
+        <div className="flex items-center gap-3">
+          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold ${
+            round1Enabled ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'
+          }`}>
+            {round1Enabled ? <PlayCircle className="h-6 w-6" /> : <StopCircle className="h-6 w-6" />}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                EVENT ROUND 1 ACCESS CONTROL
+              </span>
+              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase font-mono ${
+                round1Enabled
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  : 'bg-amber-100 text-amber-900 border border-amber-300'
+              }`}>
+                {round1Enabled ? 'ROUND 1 ENABLED (LIVE)' : 'ROUND 1 LOCKED (DISABLED)'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 font-sans mt-0.5">
+              {round1Enabled
+                ? 'Candidates can currently access and start Round 1. Click below to lock access.'
+                : 'Candidates cannot start Round 1 until you enable it from this portal.'}
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleToggleRound1}
+          disabled={togglingR1}
+          className={`rounded-xl px-5 py-2.5 text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-md transition-all ${
+            round1Enabled
+              ? 'bg-amber-600 text-white hover:bg-amber-700'
+              : 'bg-emerald-600 text-white hover:bg-emerald-700'
+          }`}
+        >
+          {togglingR1 ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : round1Enabled ? (
+            <>
+              <ToggleRight className="h-5 w-5" />
+              <span>LOCK / DISABLE ROUND 1</span>
+            </>
+          ) : (
+            <>
+              <ToggleLeft className="h-5 w-5" />
+              <span>UNLOCK / ENABLE ROUND 1 NOW</span>
+            </>
+          )}
+        </button>
       </div>
 
       {actionMessage && (
