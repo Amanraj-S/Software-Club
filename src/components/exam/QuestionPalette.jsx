@@ -2,6 +2,7 @@ import React from 'react';
 import { Bookmark, CheckCircle2, HelpCircle } from 'lucide-react';
 
 export default function QuestionPalette({
+  questions = [],
   totalQuestions = 30,
   answers = {},
   markedForReview = [],
@@ -42,8 +43,9 @@ export default function QuestionPalette({
       <div className="grid grid-cols-5 sm:grid-cols-6 gap-2 overflow-y-auto max-h-[380px] p-1 pr-2">
         {Array.from({ length: totalQuestions }).map((_, idx) => {
           const isCurrent = idx === currentIndex;
-          const isAnswered = answers[idx + 1] !== undefined;
-          const isMarked = markedForReview.includes(idx + 1);
+          const qId = questions[idx]?.id ?? (idx + 1);
+          const isAnswered = answers[qId] !== undefined;
+          const isMarked = markedForReview.includes(qId);
 
           let btnStyles = "bg-white text-slate-700 border-slate-300 hover:border-amber-400 hover:bg-amber-50";
 

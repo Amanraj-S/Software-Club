@@ -171,7 +171,13 @@ export const grantRound2Access = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Student not found.' });
     }
 
-    // Admin has full authority to grant access to any selected student
+    if (student.round1Status !== 'COMPLETED') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot grant Round 2 access: Student ${student.name} has not completed Round 1 yet.`
+      });
+    }
+
     student.round2Access = 'GRANTED';
     student.round2AccessGrantedAt = new Date();
     student.round2AccessGrantedBy = req.admin.username;
@@ -231,16 +237,25 @@ export const grantSelectedRound2Access = async (req, res) => {
     let skippedCount = 0;
 
     for (const student of students) {
-      student.round2Access = 'GRANTED';
-      student.round2AccessGrantedAt = new Date();
-      student.round2AccessGrantedBy = req.admin.username;
-      await student.save();
-      grantedCount++;
+      if (student.round1Status === 'COMPLETED') {
+        student.round2Access = 'GRANTED';
+        student.round2AccessGrantedAt = new Date();
+        student.round2AccessGrantedBy = req.admin.username;
+        await student.save();
+        grantedCount++;
+      } else {
+        skippedCount++;
+      }
+    }
+
+    let message = `Round 2 access granted to ${grantedCount} student(s).`;
+    if (skippedCount > 0) {
+      message += ` (${skippedCount} student(s) skipped because Round 1 was not completed).`;
     }
 
     return res.status(200).json({
       success: true,
-      message: `Round 2 access granted to ${grantedCount} student(s).`
+      message
     });
 
   } catch (error) {

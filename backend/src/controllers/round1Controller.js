@@ -48,7 +48,9 @@ export const startRound1 = async (req, res) => {
 
 export const getRound1Questions = async (req, res) => {
   try {
-    const questions = getStudentRound1Questions();
+    const student = req.student;
+    const seed = student?.examSessionId || student?.registerNumber || student?._id?.toString();
+    const questions = getStudentRound1Questions(seed);
     return res.status(200).json({
       success: true,
       questions

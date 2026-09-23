@@ -588,8 +588,14 @@ export default function AdminPage({ onClose }) {
                       <td className="px-4 py-3 font-bold text-slate-900">{s.name}</td>
                       <td className="px-4 py-3 font-mono font-bold text-amber-900">{s.registerNumber}</td>
                       <td className="px-4 py-3">{s.department} ({s.year})</td>
-                      <td className="px-4 py-3 text-center font-mono font-bold text-slate-800">
-                        {s.round1Score ?? 0} / 30
+                      <td className="px-4 py-3 text-center font-mono font-bold text-xs">
+                        {s.round1Status === 'COMPLETED' ? (
+                          <span className="text-slate-800 font-bold">{s.round1Score ?? 0} / 30</span>
+                        ) : s.round1Status === 'IN_PROGRESS' ? (
+                          <span className="text-amber-600 animate-pulse text-[11px] font-bold">IN_PROGRESS</span>
+                        ) : (
+                          <span className="text-slate-400 font-normal text-[11px]">NOT_STARTED</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span
@@ -617,8 +623,14 @@ export default function AdminPage({ onClose }) {
                           {s.round2Status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center font-mono font-bold text-slate-800">
-                        {s.round2Score ?? 0} / 100
+                      <td className="px-4 py-3 text-center font-mono font-bold text-xs">
+                        {s.round2Status === 'COMPLETED' ? (
+                          <span className="text-slate-800 font-bold">{s.round2Score ?? 0} / 100</span>
+                        ) : s.round2Status === 'IN_PROGRESS' ? (
+                          <span className="text-amber-600 animate-pulse text-[11px] font-bold">IN_PROGRESS</span>
+                        ) : (
+                          <span className="text-slate-400 font-normal text-[11px]">NOT_STARTED</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center font-mono font-black text-amber-900 text-sm">
                         {s.finalScore ?? 0}
@@ -637,7 +649,7 @@ export default function AdminPage({ onClose }) {
                           {s.round2Access === 'GRANTED' ? (
                             <button
                               onClick={() => handleRevokeAccess(s)}
-                              className="rounded-lg border border-red-300 bg-red-50 px-2 py-1 text-[11px] font-bold text-red-700 hover:bg-red-100"
+                              className="rounded-lg border border-red-300 bg-red-50 px-2 py-1 text-[11px] font-bold text-red-700 hover:bg-red-100 cursor-pointer"
                               title="Revoke Access"
                             >
                               Revoke
@@ -645,8 +657,13 @@ export default function AdminPage({ onClose }) {
                           ) : (
                             <button
                               onClick={() => handleGrantAccess(s)}
-                              className="rounded-lg border border-amber-400 bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-amber-600 shadow-xs"
-                              title="Grant Access"
+                              disabled={s.round1Status !== 'COMPLETED'}
+                              className={`rounded-lg border px-2.5 py-1 text-[11px] font-bold transition-all ${
+                                s.round1Status === 'COMPLETED'
+                                  ? 'border-amber-400 bg-amber-500 text-white hover:bg-amber-600 shadow-xs cursor-pointer'
+                                  : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed opacity-60'
+                              }`}
+                              title={s.round1Status === 'COMPLETED' ? 'Grant Round 2 Access' : 'Candidate must complete Round 1 first'}
                             >
                               Grant R2
                             </button>
@@ -702,11 +719,19 @@ export default function AdminPage({ onClose }) {
                 <div className="grid grid-cols-3 gap-3 text-xs">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
                     <span className="text-slate-500 text-[10px] block uppercase font-bold">Round 1 Score</span>
-                    <span className="text-lg font-black font-mono text-slate-900">{inspectStudent.round1Score || 0} / 30</span>
+                    <span className="text-sm sm:text-base font-black font-mono text-slate-900">
+                      {inspectStudent.round1Status === 'COMPLETED'
+                        ? `${inspectStudent.round1Score || 0} / 30`
+                        : inspectStudent.round1Status || 'NOT_STARTED'}
+                    </span>
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
                     <span className="text-slate-500 text-[10px] block uppercase font-bold">Round 2 Score</span>
-                    <span className="text-lg font-black font-mono text-amber-700">{inspectStudent.round2Score || 0} / 100</span>
+                    <span className="text-sm sm:text-base font-black font-mono text-amber-700">
+                      {inspectStudent.round2Status === 'COMPLETED'
+                        ? `${inspectStudent.round2Score || 0} / 100`
+                        : inspectStudent.round2Status || 'NOT_STARTED'}
+                    </span>
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
                     <span className="text-slate-500 text-[10px] block uppercase font-bold">Final Score</span>

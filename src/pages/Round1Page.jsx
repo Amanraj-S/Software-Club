@@ -2,17 +2,19 @@ import React, { useState, useEffect } from 'react';
 import QuestionPalette from '../components/exam/QuestionPalette';
 import QuestionCard from '../components/exam/QuestionCard';
 import Round1ResultCard from '../components/exam/Round1ResultCard';
+import ExamPreStartModal from '../components/exam/ExamPreStartModal';
 import TimerBadge from '../components/common/TimerBadge';
 import SecurityWarningToast from '../components/common/SecurityWarningToast';
 import { useExamTimer } from '../hooks/useExamTimer';
 import { useSecurityMonitor } from '../hooks/useSecurityMonitor';
-import { apiStartRound1, apiGetRound1Questions, apiSubmitRound1, apiReportViolation } from '../services/api';
+import { apiStartRound1, apiGetRound1Questions, apiSubmitRound1, apiReportViolation, apiGetStudentSession, apiGetPublicConfig } from '../services/api';
 import { Shield, Loader2, AlertCircle, Maximize, AlertTriangle } from 'lucide-react';
 
-export default function Round1Page({ studentSession, onProceedToRound2Access }) {
+export default function Round1Page({ studentSession, onProceedToRound2Access, onBackHome }) {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showPreStartModal, setShowPreStartModal] = useState(false);
 
   const [answers, setAnswers] = useState({});
   const [markedForReview, setMarkedForReview] = useState([]);
@@ -22,6 +24,50 @@ export default function Round1Page({ studentSession, onProceedToRound2Access }) 
   const [initialTimeRemaining, setInitialTimeRemaining] = useState(2100); // 35 minutes default
 
   const [isLockedByAdmin, setIsLockedByAdmin] = useState(false);
+
+  // Check student status on load to decide whether to show Pre-Start modal or directly load exam
+  const checkStatusAndInit = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setIsLockedByAdmin(false);
+
+      // Check public config FIRST to see if Round 1 is enabled by Admin
+      const configRes = await apiGetPublicConfig();
+      if (!configRes.round1Enabled) {
+        setIsLockedByAdmin(true);
+        setError('Round 1 has not been enabled by the Event Administrator yet. Please wait for the announcement.');
+        setLoading(false);
+        setShowPreStartModal(false);
+        return;
+      }
+
+      const sessionRes = await apiGetStudentSession();
+      const st = sessionRes.student;
+
+      if (st && st.round1Status === 'NOT_STARTED') {
+        // First time starting Round 1 and Round 1 is enabled -> Show Rules & Regulations + 25s Countdown Modal!
+        setShowPreStartModal(true);
+        setLoading(false);
+      } else {
+        // Already IN_PROGRESS or COMPLETED -> Directly initialize exam session
+        await initRound1();
+      }
+    } catch (err) {
+      // Fallback check config
+      try {
+        const configRes = await apiGetPublicConfig();
+        if (!configRes.round1Enabled) {
+          setIsLockedByAdmin(true);
+          setError('Round 1 has not been enabled by the Event Administrator yet. Please wait for the announcement.');
+          setLoading(false);
+          setShowPreStartModal(false);
+          return;
+        }
+      } catch (e) {}
+      await initRound1();
+    }
+  };
 
   const initRound1 = async () => {
     try {
@@ -67,7 +113,7 @@ export default function Round1Page({ studentSession, onProceedToRound2Access }) 
   };
 
   useEffect(() => {
-    initRound1();
+    checkStatusAndInit();
   }, []);
 
   // Timer Hook (35 minutes, server timestamp synchronized)
@@ -188,14 +234,15 @@ export default function Round1Page({ studentSession, onProceedToRound2Access }) 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <button
               onClick={() => {
-                window.location.hash = '#home';
+                if (onBackHome) onBackHome();
+                else window.location.hash = '#home';
               }}
               className="btn-cyber-secondary rounded-xl px-5 py-3 text-xs font-bold"
             >
               Return to Home
             </button>
             <button
-              onClick={initRound1}
+              onClick={checkStatusAndInit}
               className="btn-cyber-primary rounded-xl px-6 py-3 text-xs font-black uppercase tracking-wider shadow-md"
             >
               REFRESH ROUND 1 STATUS
@@ -268,6 +315,7 @@ export default function Round1Page({ studentSession, onProceedToRound2Access }) 
         {/* Left Navigator (4 cols on lg) */}
         <div className="lg:col-span-4 h-full">
           <QuestionPalette
+            questions={questions}
             totalQuestions={questions.length}
             answers={answers}
             markedForReview={markedForReview}
@@ -330,6 +378,23 @@ export default function Round1Page({ studentSession, onProceedToRound2Access }) 
           </div>
         </div>
       )}
+
+      {/* Pre-Start Rules & Regulations + 25s Countdown Modal */}
+      <ExamPreStartModal
+        isOpen={showPreStartModal}
+        roundNumber={1}
+        roundTitle="Round 1: DSA Fundamentals"
+        durationText="35 Minutes"
+        onStartConfirmed={() => {
+          setShowPreStartModal(false);
+          initRound1();
+        }}
+        onCancel={() => {
+          setShowPreStartModal(false);
+          if (onBackHome) onBackHome();
+          else window.location.hash = '#home';
+        }}
+      />
 
       {/* Security Toast Warning Modal */}
       <SecurityWarningToast

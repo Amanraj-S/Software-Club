@@ -45,12 +45,14 @@ export default function App() {
   });
 
   // Helper to sync view state with browser URL hash and history pushState
-  const navigateTo = (step, replace = false) => {
-    // Lock navigation if in middle of an active exam
-    if ((currentStep === 'ROUND1' || currentStep === 'ROUND2') && (step !== 'ROUND1' && step !== 'ROUND2')) {
-      console.warn('Security Lock: Navigation blocked during active exam mode');
-      window.history.pushState({ step: currentStep }, '', `#${currentStep.toLowerCase()}`);
-      return;
+  const navigateTo = (step, replace = false, force = false) => {
+    // Lock navigation only if in middle of an ACTIVE exam in progress
+    if (!force && (currentStep === 'ROUND1' || currentStep === 'ROUND2') && (step !== 'ROUND1' && step !== 'ROUND2')) {
+      if (studentSession?.round1Status === 'IN_PROGRESS' || studentSession?.round2Status === 'IN_PROGRESS') {
+        console.warn('Security Lock: Navigation blocked during active exam mode');
+        window.history.pushState({ step: currentStep }, '', `#${currentStep.toLowerCase()}`);
+        return;
+      }
     }
 
     const validStep = validateRouteAccess(step);
@@ -66,12 +68,14 @@ export default function App() {
   // Listen to browser Back / Forward & direct URL address bar Hash changes
   useEffect(() => {
     const handleUrlChange = () => {
-      // Security Lock: Prevent navigating away during active exam
+      // Security Lock: Prevent navigating away ONLY during active exam in progress
       if (currentStep === 'ROUND1' || currentStep === 'ROUND2') {
-        const targetHash = window.location.hash.replace('#', '').toUpperCase();
-        if (targetHash !== currentStep) {
-          window.history.pushState({ step: currentStep }, '', `#${currentStep.toLowerCase()}`);
-          return;
+        if (studentSession?.round1Status === 'IN_PROGRESS' || studentSession?.round2Status === 'IN_PROGRESS') {
+          const targetHash = window.location.hash.replace('#', '').toUpperCase();
+          if (targetHash !== currentStep) {
+            window.history.pushState({ step: currentStep }, '', `#${currentStep.toLowerCase()}`);
+            return;
+          }
         }
       }
 
@@ -91,7 +95,7 @@ export default function App() {
       window.removeEventListener('popstate', handleUrlChange);
       window.removeEventListener('hashchange', handleUrlChange);
     };
-  }, [currentStep, validateRouteAccess]);
+  }, [currentStep, validateRouteAccess, studentSession]);
 
   // Tab Close / Page Refresh Protection during exam
   useEffect(() => {
@@ -198,16 +202,14 @@ export default function App() {
           <Round1Page
             studentSession={studentSession}
             onProceedToRound2Access={handleProceedToRound2Access}
+            onBackHome={() => navigateTo('HOME', false, true)}
           />
         )}
 
         {currentStep === 'ROUND2' && (
           <Round2Page
             studentSession={studentSession}
-            onBackHome={() => {
-              setCurrentStepState('HOME');
-              window.history.pushState({ step: 'HOME' }, '', '#home');
-            }}
+            onBackHome={() => navigateTo('HOME', false, true)}
           />
         )}
 

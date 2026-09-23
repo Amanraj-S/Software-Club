@@ -4,6 +4,7 @@ import PythonEditor from '../components/coding/PythonEditor';
 import TestResultsPanel from '../components/coding/TestResultsPanel';
 import TimerBadge from '../components/common/TimerBadge';
 import SecurityWarningToast from '../components/common/SecurityWarningToast';
+import ExamPreStartModal from '../components/exam/ExamPreStartModal';
 import { useExamTimer } from '../hooks/useExamTimer';
 import { useSecurityMonitor } from '../hooks/useSecurityMonitor';
 import {
@@ -35,6 +36,7 @@ export default function Round2Page({ studentSession, onBackHome }) {
   const [statusState, setStatusState] = useState('NOT_STARTED'); // NOT_STARTED, IN_PROGRESS, COMPLETED
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showPreStartModal, setShowPreStartModal] = useState(false);
 
   // Coding state
   const [problems, setProblems] = useState([]);
@@ -374,7 +376,7 @@ export default function Round2Page({ studentSession, onBackHome }) {
               Return to Home
             </button>
             <button
-              onClick={handleStartExam}
+              onClick={() => setShowPreStartModal(true)}
               className="btn-cyber-primary rounded-2xl px-8 py-4 text-sm font-black uppercase tracking-wider flex items-center gap-3 shadow-xl"
             >
               <span>[ START ROUND 2 ]</span>
@@ -534,6 +536,19 @@ export default function Round2Page({ studentSession, onBackHome }) {
           </div>
         </div>
       )}
+
+      {/* Pre-Start Rules & Regulations + 25s Countdown Modal */}
+      <ExamPreStartModal
+        isOpen={showPreStartModal}
+        roundNumber={2}
+        roundTitle="Round 2: Python Coding Challenge"
+        durationText="60 Minutes (1 Hour)"
+        onStartConfirmed={() => {
+          setShowPreStartModal(false);
+          handleStartExam();
+        }}
+        onCancel={() => setShowPreStartModal(false)}
+      />
 
       {/* Security Warning Modal */}
       <SecurityWarningToast
